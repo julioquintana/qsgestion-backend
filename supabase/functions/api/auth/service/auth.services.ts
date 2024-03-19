@@ -47,8 +47,6 @@ async function signIn(supabase: SupabaseClient, email: string, password: string)
         
         const tokenInfo: UserAdditionalInfo = {
             user_id: userAdditionalInfoSalved.user_id!,
-            active_from: account.data![0].active_from,
-            active_until: account.data![0].active_until,
             roles: userAdditionalInfoSalved.roles,
             account_id: userAdditionalInfoSalved.account_id
         }
@@ -59,7 +57,7 @@ async function signIn(supabase: SupabaseClient, email: string, password: string)
             {
                 headers: {
                     "Content-Type": "application/json",
-                    "AuthorizationApp": `Bearer  ${buildToken(tokenInfo)}`
+                    "app-authorization": `Bearer ${buildToken(tokenInfo)}`
                 },
             }
         );

@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
                 if (authResponse) {
                     return authResponse;
                 }
-                return await getAllUsers(supabaseClient);
+                return await getAllUsers(supabaseClient, req);
             }
         }
         throw new Error("Invalid Request ")

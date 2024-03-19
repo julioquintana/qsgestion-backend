@@ -39,12 +39,25 @@ const validateToken = (token: string) => {
     }
 }
 
+export const getValueToken = (token: string) => {
+    try {
+        return jwt.verify(token, secretKey) as any;
+    } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            console.error('Expired token');
+            return;
+        }
+        console.error('Invalid token:', error);
+        return;
+    }
+}
+
 export const validateAppAuthorization = (req: Request) => {
     console.log('Validanting appauthorization header')
 
-    const authHeader = req.headers.get('appauthorization');
+    const authHeader = req.headers.get('app-authorization');
     if (!authHeader) {
-        console.error('No appauthorization header');
+        console.error('No app-authorization header');
         return new Response(JSON.stringify({error: 'No appauthorization header'}), {
             headers: {...corsHeaders, 'Content-Type': 'application/json'},
             status: 401,
