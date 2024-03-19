@@ -1,11 +1,26 @@
 import {UserDto} from "../../../_shared/dto/user.dto.ts";
 import {Account} from "../../../_shared/dto/account.dto.ts";
 import {SupabaseClient} from "https://esm.sh/@supabase/supabase-js@2.39.8";
-import {signUp} from "../../auth/service/auth.services.ts";
+import {createRoles, signUp} from "../../auth/service/auth.services.ts";
 import {SignUpUserDto} from "../../auth/dto/signup-user.dto.ts";
 import {createAdditionalUserInfo} from "../../user/service/users.service.ts";
 import {buildToken} from "../../../_shared/security/index.ts";
 import {UserAdditionalInfo} from "../../../_shared/dto/user-additional-info.dto.ts";
+import {TokenInfoDto} from "../../../_shared/dto/token-info.dto.ts";
+import {RolesDto} from "../../auth/dto/roles.dto.ts";
+
+const generateAdditionalForQSGestion = (user: UserDto, accountId: number) => {
+    return [
+        {user_id: user.id, key: "NAME", value: user.name, account_id: accountId},
+        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
+        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
+        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
+        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
+        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
+        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
+        {user_id: user.id, key: "name", value: user.name, account_id: accountId}
+    ] as UserAdditionalInfo[]
+};
 
 export async function createAccount(supabase: SupabaseClient, request: Request): Promise<Response> {
     try {
@@ -13,8 +28,8 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
         console.log('Request body:', JSON.stringify(requestBody));
         const account: Account = requestBody.account;
         const accountExist: any = await getAccountByDni(supabase, account.dni);
-        console.log('Account data error:', accountExist.error);
         if (accountExist.length > 0) {
+            console.log('Account data error:', accountExist.error);
             return new Response(JSON.stringify({
                     status: 'ERROR', message: {
                         name: "AccountApiError",
@@ -45,30 +60,41 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
 
         }
         const userId = userData.user?.id ?? "";
-        const currentDate =new Date(new Date().toISOString());
+        const currentDate = new Date(new Date().toISOString());
         const futureDate = new Date(new Date().toISOString());
         futureDate.setDate(currentDate.getDate() + 15);
 
-        const { data } = await supabase
-            .from('accounts')
-            .insert({
-                owner_id: userId,
-                dni: account.dni,
-                name: account.name,
-                address: account.address,
-                status: 'active',
-                active_from: currentDate,
-                active_until: futureDate
-            }).select();
+        const accountData: Account = {
+            owner_id: userId,
+            dni: account.dni,
+            name: account.name,
+            address: account.address,
+            status: 'active',
+            active_from: currentDate,
+            active_until: futureDate
+        }
 
-        let userSalved: UserAdditionalInfo[] | null = await createAdditionalUserInfo(supabase, userId, data![0].id, ["owner"]);
-        userSalved![0].active_from = currentDate
-        userSalved![0].active_until = futureDate
+        const {data} = await supabase
+            .from('accounts')
+            .insert(accountData).select();
+
+        user.id = userId;
+        const additionalIndoDataForQSGestion: UserAdditionalInfo[] = generateAdditionalForQSGestion(user, data![0].id);
+        const userSalved: UserAdditionalInfo[] | null = await createAdditionalUserInfo(supabase, additionalIndoDataForQSGestion);
+
+        const roles: RolesDto = {user_id: userId, roles: ["owner"], account_id: data![0].id}
+        const rolesSalved: RolesDto[] | null = await createRoles(supabase, roles);
+
+
+        const tokenInfo = userSalved![0] as TokenInfoDto;
+        tokenInfo.roles = rolesSalved![0].roles;
+        tokenInfo.active_from = currentDate
+        tokenInfo.active_until = futureDate
         return new Response(JSON.stringify({message: 'User Created', user_id: userData.user?.id}),
             {
                 headers: {
                     "Content-Type": "application/json",
-                    "AuthorizationApp": `Bearer  ${buildToken(userSalved![0])}`
+                    "AuthorizationApp": `Bearer  ${buildToken(tokenInfo)}`
                 },
                 status: 200,
             });

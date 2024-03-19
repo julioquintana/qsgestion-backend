@@ -2,6 +2,7 @@ import {SupabaseClient} from "../../../_shared/index.ts";
 import {ErrorDto} from "../../../_shared/dto/error.dto.ts";
 import {buildToken} from "../../../_shared/security/index.ts";
 import {UserAdditionalInfo} from "../../../_shared/dto/user-additional-info.dto.ts";
+import {RolesDto} from "../dto/roles.dto.ts";
 
 async function signUp(supabase: SupabaseClient, email: string, password: string): Promise<any> {
     try {
@@ -68,5 +69,18 @@ async function signIn(supabase: SupabaseClient, email: string, password: string)
         return {error: 'Error signing up.', message: error.message, status: "1234"} as ErrorDto;
     }
 }
+async function createRoles(supabase: SupabaseClient, rolesDto: RolesDto) {
 
-export {signUp, signIn};
+    const {data, error} = await supabase
+        .from('roles')
+        .upsert(rolesDto).select()
+
+    if (error) {
+        console.error('Error updating user info:', error);
+    } else {
+        console.log('User info updated:', data);
+    }
+    console.log('User additional info salved:', data);
+    return data;
+}
+export {signUp, signIn, createRoles};

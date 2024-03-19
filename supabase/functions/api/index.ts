@@ -16,10 +16,10 @@ Deno.serve(async (req: Request) => {
         const supabaseClient = supabase(req);
 
         // Define URL patterns for login and logout
-        const loginPattern = new URLPattern({pathname: '/backend/auth/login'});
-        const logoutPattern = new URLPattern({pathname: '/backend/auth/logout'});
-        const createAccountPattern = new URLPattern({pathname: '/backend/account'});
-        const allUserPattern = new URLPattern({pathname: '/backend/user'});
+        const loginPattern = new URLPattern({pathname: '/api/auth/login'});
+        const logoutPattern = new URLPattern({pathname: '/api/auth/logout'});
+        const createAccountPattern = new URLPattern({pathname: '/api/account'});
+        const allUserPattern = new URLPattern({pathname: '/api/user'});
 
         // Check if the request URL matches any of the patterns
         const isLogin = loginPattern.test(url);

@@ -29,7 +29,7 @@ CREATE INDEX idx_payments_account_id ON payments(account_id);
 -- Crear la tabla user_additional_info
 CREATE TABLE user_additional_info (
                                       user_id UUID PRIMARY KEY REFERENCES auth.users(id),
-                                      company VARCHAR(255),
+                                      name TEXT,
                                       roles TEXT[],
                                       owner UUID REFERENCES auth.users(id)
 );

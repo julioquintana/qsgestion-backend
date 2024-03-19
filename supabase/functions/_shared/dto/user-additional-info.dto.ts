@@ -1,8 +1,6 @@
 export interface UserAdditionalInfo {
     user_id: string;
-    roles: string[];
+    key: string;
+    value: string;
     account_id: number;
-    active_from: Date;
-    active_until: Date;
-    
 }

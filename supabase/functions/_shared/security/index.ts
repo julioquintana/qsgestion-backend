@@ -1,9 +1,9 @@
 import jwt from "npm:jsonwebtoken";
-import {UserAdditionalInfo} from "../dto/user-additional-info.dto.ts";
 import {corsHeaders} from "../index.ts";
+import {TokenInfoDto} from "../dto/token-info.dto.ts";
 
 const secretKey = 'your-secret-key';
-export const buildToken = (userInfo: UserAdditionalInfo) => {
+export const buildToken = (userInfo: TokenInfoDto) => {
     const expiresIn = Math.floor(Date.now() / 1000) + (60 * 60 * 24);
 
     return [jwt.sign({

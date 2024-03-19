@@ -1,24 +1,30 @@
-import jwt from "npm:jsonwebtoken";
 import SupabaseClient from "https://esm.sh/v135/@supabase/supabase-js@2.39.8/dist/module/SupabaseClient.d.ts";
 import {corsHeaders} from "../../../_shared/index.ts";
+import {UserAdditionalInfo} from "../../../_shared/dto/user-additional-info.dto.ts";
+import {RolesDto} from "../../auth/dto/roles.dto.ts";
 
-async function getAllUsers(supabaseClient: SupabaseClient) {
-    await supabaseClient.auth.getUser()
-    const {data: users, error} = await supabaseClient.from('users').select('*')
+async function getAllUsers(supabase: SupabaseClient) {
+    //TODO: We need  search additional info for each user and mapper to structure to response
+    await supabase.auth.getUser()
+
+
+    const {data, error} = await supabase
+        .from('users')
+        .select('email,  user_additional_info(name),accounts(id,dni,name,address,owner_id,active_from,active_until,status),last_sign_in_at')
     if (error) throw error
 
-    return new Response(JSON.stringify({users}), {
+    return new Response(JSON.stringify({data}), {
         headers: {...corsHeaders, 'Content-Type': 'application/json'},
         status: 200,
     })
 }
 
 
-async function createAdditionalUserInfo(supabase: SupabaseClient, newUser: string, account_id: string, roles: string[]) {
+async function createAdditionalUserInfo(supabase: SupabaseClient, additionalInfo: UserAdditionalInfo[]) {
 
     const {data, error} = await supabase
         .from('user_additional_info')
-        .insert({account_id: account_id, roles: roles, user_id: newUser}).select()
+        .insert(additionalInfo).select()
 
     if (error) {
         console.error('Error updating user info:', error);
@@ -30,14 +36,8 @@ async function createAdditionalUserInfo(supabase: SupabaseClient, newUser: strin
 }
 
 async function updateUserInfo(supabase: SupabaseClient, user_id: string, company: string, roles: string, token: string) {
-    try {
-        jwt.verify(token, 'your-secret-key');
-    } catch (error) {
-        console.error('Invalid token:', error);
-        return;
-    }
 
-    //supabase.auth.setAuth(userToken);
+    await supabase.auth.getUser()
 
 
     const {data, error} = await supabase
