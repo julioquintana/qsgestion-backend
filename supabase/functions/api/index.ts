@@ -32,7 +32,6 @@ Deno.serve(async (req: Request) => {
             case isLogin && method === 'POST': {
                 const credential: UserDto = await req.json()
                 return signIn(supabaseClient, credential.email, credential.password)
-                break;
             }
             case isLogout && method === 'POST': {
                 // Handle logout

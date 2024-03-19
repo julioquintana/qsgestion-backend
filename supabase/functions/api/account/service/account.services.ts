@@ -49,7 +49,7 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
         const futureDate = new Date(new Date().toISOString());
         futureDate.setDate(currentDate.getDate() + 15);
 
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('accounts')
             .insert({
                 owner_id: userId,
@@ -85,7 +85,7 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
 }
 
 export async function getAccountByDni(supabase: SupabaseClient, dni: string) {
-    const {data, error} = await supabase
+    const {data} = await supabase
         .from('accounts')
         .select('*')
         .eq('dni', dni);

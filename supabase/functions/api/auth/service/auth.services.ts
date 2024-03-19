@@ -33,7 +33,7 @@ async function signIn(supabase: SupabaseClient, email: string, password: string)
                 });
         }
         
-        const {data, error} = await supabase
+        const {data} = await supabase
             .from('user_additional_info')
             .select('*')
             .eq('user_id', user.data.user.id);
