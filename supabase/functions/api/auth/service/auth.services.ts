@@ -13,13 +13,13 @@ export async function loginUser(supabase: SupabaseClient, email: string, passwor
     const user: AuthTokenResponsePassword = await signIn(supabase, email, password);
     
     const {data} = await supabase
-    .from('metadata')
-    .select('account_id')
+    .from('user_account')
+    .select()
     .eq('user_id', user.data.user!.id);
 
-    const distinctAccountIds = [...new Set(data.map(item => item.account_id))];
+    const distinctAccountIds: number[] = [...new Set(data.map(item => item.account_id))];
 
-    const usersFound = await getUsersByUserIdAndAccountsRepository(supabase, distinctAccountIds, user.data.user.id)
+    const usersFound = await getUsersByUserIdAndAccountsRepository(supabase, distinctAccountIds, user.data.user!.id)
 
     for (let index = 0; index < usersFound[0].accounts.length; index++) {
       const account = usersFound[0].accounts[index];
@@ -35,18 +35,24 @@ export async function loginUser(supabase: SupabaseClient, email: string, passwor
 
       usersFound[0].accounts[index].token = buildToken(tokenInfo)
     }
-    const response = {message: 'Signed in', user: user.data.user!.email}
-    return new Response(
-        JSON.stringify(usersFound[0]),
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-    );
-  } catch
-      (error) {
-    console.error('Error signing up:', error);
-    return {error: 'Error signing up.', message: error.message, status: "1234"} as ErrorDto;
+
+
+
+      return new Response(JSON.stringify({message: 'Sign in', payload: usersFound[0]}),
+          {
+              headers: {
+                  "Content-Type": "application/json",
+              },
+              status: 200,
+          });
+  } catch (error) {
+      console.error('Error login account:', error);
+      return new Response(JSON.stringify({status: 'ERROR', message: error}),
+          {
+              headers: {
+                  "Content-Type": "application/json",
+              },
+              status: 500,
+          });
   }
 }

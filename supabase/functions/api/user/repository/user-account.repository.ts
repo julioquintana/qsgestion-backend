@@ -2,7 +2,7 @@ import SupabaseClient from "https://esm.sh/v135/@supabase/supabase-js@2.39.8/dis
 import {UserResponse} from "../../../_shared/dto/user-response.dto.ts";
 import {UserAccountDto} from "../dto/user-account.dto.ts";
 
-export async function getUserAccountRepository(supabase: SupabaseClient, userId: string, accountId: string): Promise<UserResponse> {
+export async function getUserAccountByUserIdRepository(supabase: SupabaseClient, userId: string, accountId: string): Promise<UserResponse> {
     const {data, error} = await supabase
         .from('user-account')
         .select()
