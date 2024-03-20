@@ -2,6 +2,7 @@ import SupabaseClient from "https://esm.sh/v135/@supabase/supabase-js@2.39.8/dis
 import {corsHeaders} from "../../../_shared/index.ts";
 import {getValueToken} from "../../../_shared/security/index.ts";
 import {getAllUserRepository} from "../repository/user.repository.ts";
+import {UserResponse} from "../../../_shared/dto/user-response.dto.ts";
 
 async function getAllUsers(supabase: SupabaseClient, req: Request) {
     //TODO: We need  search additional info for each user and mapper to structure to response
@@ -9,10 +10,8 @@ async function getAllUsers(supabase: SupabaseClient, req: Request) {
     const tokenParts = authHeader!.split(' ');
     const accountId = (getValueToken(tokenParts[1])).account_id
     await supabase.auth.getUser()
-    console.log(accountId)
 
-    const response = getAllUserRepository(supabase, accountId);
-
+    const response: UserResponse[] = await getAllUserRepository(supabase, accountId);
 
     return new Response(JSON.stringify(response), {
         headers: {...corsHeaders, 'Content-Type': 'application/json'},
