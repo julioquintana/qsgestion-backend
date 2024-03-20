@@ -1,15 +1,23 @@
-export interface UserResponseDto {
-    user_id: string;
-    email: string;
-    roles: string[]; //additional info
-    account: { //account
-        id: number;
-        dni: string;
-        name: string;
-        address: string;
-        owner_id: string;
-        active_from: Date;
-        active_until: Date;
-        status: string;
-    }
+export interface UserResponse {
+  email: string;
+  accounts: AccountResponse[];
+}
+
+export interface AccountResponse {
+  id: number;
+  dni: string;
+  name: string;
+  roles: string[];
+  status: string;
+  address: string;
+  metadata: Metadatum[];
+  owner_id: string;
+  active_from: Date;
+  active_until: Date;
+  token: string;
+}
+
+export interface Metadatum {
+  key: string;
+  value: string;
 }

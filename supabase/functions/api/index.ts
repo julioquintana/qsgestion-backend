@@ -1,7 +1,7 @@
 import {getAllUsers} from "./user/service/users.service.ts";
 import {createAccount} from "./account/service/account.services.ts";
 import {corsHeaders, supabase} from "../_shared/index.ts";
-import {signIn} from "./auth/service/auth.services.ts";
+import {loginUser} from "./auth/service/auth.services.ts";
 import {UserDto} from "../_shared/dto/user.dto.ts";
 import { validateAppAuthorization } from "../_shared/security/index.ts";
 
@@ -31,7 +31,7 @@ Deno.serve(async (req: Request) => {
         switch (true) {
             case isLogin && method === 'POST': {
                 const credential: UserDto = await req.json()
-                return signIn(supabaseClient, credential.email, credential.password)
+                return loginUser(supabaseClient, credential.email, credential.password)
             }
             case isLogout && method === 'POST': {
                 // Handle logout

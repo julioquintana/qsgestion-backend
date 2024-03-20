@@ -6,13 +6,13 @@ const secretKey = 'your-secret-key';
 export const buildToken = (userInfo: TokenInfoDto) => {
     const expiresIn = Math.floor(Date.now() / 1000) + (60 * 60 * 24);
 
-    return [jwt.sign({
+    return jwt.sign({
         account_id: userInfo.account_id,
         user: userInfo.user_id,
         active: dateIsBetween(userInfo.active_from, userInfo.active_until),
         roles: userInfo.roles,
         exp: expiresIn
-    }, secretKey)];
+    }, secretKey);
 };
 
 const dateIsBetween = (dateFrom: Date, dateUntil: Date) => {

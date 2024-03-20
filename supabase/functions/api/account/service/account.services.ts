@@ -1,15 +1,20 @@
 import {UserDto} from "../../../_shared/dto/user.dto.ts";
-import {Account} from "../../../_shared/dto/account.dto.ts";
 import {SupabaseClient} from "https://esm.sh/@supabase/supabase-js@2.39.8";
-import {createRoles, signUp} from "../../auth/service/auth.services.ts";
-import {SignUpUserDto} from "../../auth/dto/signup-user.dto.ts";
-import {createAdditionalUserInfo} from "../../user/service/users.service.ts";
 import {buildToken} from "../../../_shared/security/index.ts";
-import {UserAdditionalInfo} from "../../../_shared/dto/user-additional-info.dto.ts";
+import {MetadataDto} from "../../user/dto/metadata.dto.ts";
 import {TokenInfoDto} from "../../../_shared/dto/token-info.dto.ts";
 import {RolesDto} from "../../auth/dto/roles.dto.ts";
+import {createRoles, getUserRecordByEmailRepository} from "../../user/repository/user.repository.ts";
+import {AccountDto} from "../../../_shared/dto/account.dto.ts";
+import {createUserAccountRepository} from "../../user/repository/user-account.repository.ts";
+import {createAccountRepository, getAccountByDni} from "../repository/account.repositoty.ts";
+import {signUp} from "../../auth/repository/auth.repository.ts";
+import {createMetadata} from "../../user/repository/metadata.repository.ts";
+import {User} from "https://esm.sh/v135/@supabase/gotrue-js@2.62.2/dist/module/lib/types.d.ts";
+import {UserAccountDto} from "../../user/dto/user-account.dto.ts";
+import {AccountResponse, UserResponse} from "../../../_shared/dto/user-response.dto.ts";
 
-const generateAdditionalForQSGestion = (user: UserDto, accountId: number) => {
+const metadataForQSGestion = (user: UserDto, accountId: number) => {
     return [
         {user_id: user.id, key: "NAME", value: user.name, account_id: accountId},
         {user_id: user.id, key: "name", value: user.name, account_id: accountId},
@@ -19,17 +24,22 @@ const generateAdditionalForQSGestion = (user: UserDto, accountId: number) => {
         {user_id: user.id, key: "name", value: user.name, account_id: accountId},
         {user_id: user.id, key: "name", value: user.name, account_id: accountId},
         {user_id: user.id, key: "name", value: user.name, account_id: accountId}
-    ] as UserAdditionalInfo[]
+    ] as MetadataDto[]
 };
 
 export async function createAccount(supabase: SupabaseClient, request: Request): Promise<Response> {
     try {
         const requestBody = await request.json();
         console.log('Request body:', JSON.stringify(requestBody));
-        const account: Account = requestBody.account;
-        const accountExist: any = await getAccountByDni(supabase, account.dni);
-        if (accountExist.length > 0) {
-            console.log('Account data error:', accountExist.error);
+
+        const account: AccountDto = requestBody.account;
+        const userDto: UserDto = requestBody.user;
+
+        console.log('Searching  Account:', JSON.stringify(account))
+        let accountDto: AccountDto = await getAccountByDni(supabase, account.dni);
+
+        if (accountDto != null) {
+            console.log('Account data error:', accountDto.error);
             return new Response(JSON.stringify({
                     status: 'ERROR', message: {
                         name: "AccountApiError",
@@ -45,27 +55,10 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
                 });
 
         }
-
-        const user: UserDto = requestBody.user;
-        const userData: SignUpUserDto = await signUp(supabase, user.email, user.password);
-        if (userData.error) {
-            return new Response(JSON.stringify({status: 'ERROR', message: userData.error}),
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    status: 500,
-                });
-
-
-        }
-        const userId = userData.user?.id ?? "";
         const currentDate = new Date(new Date().toISOString());
         const futureDate = new Date(new Date().toISOString());
         futureDate.setDate(currentDate.getDate() + 15);
-
-        const accountData: Account = {
-            owner_id: userId,
+        const accountData: AccountDto = {
             dni: account.dni,
             name: account.name,
             address: account.address,
@@ -73,28 +66,53 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
             active_from: currentDate,
             active_until: futureDate
         }
+        const userDB = await getUserRecordByEmailRepository(supabase, userDto.email);
 
-        const {data} = await supabase
-            .from('accounts')
-            .insert(accountData).select();
+        if (userDB) {
+            userDto.id = userDB.id;
+            accountData.owner_id = userDto.id;
+            console.log('User Found:', userDB.id)
+        } else {
+            const userCreated: User = await signUp(supabase, userDto.email, userDto.password);
+            console.log('Created new user:', JSON.stringify(userCreated))
+            accountData.owner_id = userCreated.id;
+            userDto.id = userCreated.id;
+        }
+        accountDto = await createAccountRepository(supabase, accountData);
+        console.log('Created account:', JSON.stringify(accountDto))
+        const userAccountDto: UserAccount = {user_id: userDto.id, account_id: accountDto.id};
+        const userAccount: UserAccountDto = await createUserAccountRepository(supabase, userAccountDto);
+        console.log('Created User-Account', JSON.stringify(userAccount));
+        const metadata = await createMetadata(supabase, metadataForQSGestion(userDto, accountDto.id));
+        console.log('Created Metadata:', JSON.stringify(metadata))
 
-        user.id = userId;
-        const additionalIndoDataForQSGestion: UserAdditionalInfo[] = generateAdditionalForQSGestion(user, data![0].id);
-        const userSalved: UserAdditionalInfo[] | null = await createAdditionalUserInfo(supabase, additionalIndoDataForQSGestion);
+        const roles: RolesDto = {user_id: userDto.id, key: "owner", account_id: accountDto.id}
+        const rolesSalved: RolesDto | null = await createRoles(supabase, roles);
+        console.log('Created user roles:', JSON.stringify(rolesSalved))
 
-        const roles: RolesDto = {user_id: userId, roles: ["owner"], account_id: data![0].id}
-        const rolesSalved: RolesDto[] | null = await createRoles(supabase, roles);
+        const tokenInfo: TokenInfoDto = {
+            user_id: userDto.id,
+            roles: [rolesSalved.key],
+            account_id: accountDto.id,
+            active_from: currentDate,
+            active_until: futureDate
+        };
+        const token = buildToken(tokenInfo)
+        const accountResponse: AccountResponse = accountDto as AccountResponse;
+        accountResponse.roles = [rolesSalved.key];
+        accountResponse.metadata = metadata;
+        accountResponse.token = token;
+        const userCreated: UserResponse = {
+            email: userDto.email,
+            accounts: [accountResponse],
+        }
 
 
-        const tokenInfo = userSalved![0] as TokenInfoDto;
-        tokenInfo.roles = rolesSalved![0].roles;
-        tokenInfo.active_from = currentDate
-        tokenInfo.active_until = futureDate
-        return new Response(JSON.stringify({message: 'User Created', user_id: userData.user?.id}),
+        return new Response(JSON.stringify({message: 'User and Account Created', payload: userCreated}),
             {
                 headers: {
                     "Content-Type": "application/json",
-                    "AuthorizationApp": `Bearer  ${buildToken(tokenInfo)}`
+                    "AuthorizationApp": `Bearer  ${token}`
                 },
                 status: 200,
             });
@@ -110,13 +128,6 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
     }
 }
 
-export async function getAccountByDni(supabase: SupabaseClient, dni: string) {
-    const {data} = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('dni', dni);
-    return data;
-}
 
 /*
 const userCreated = response.data!.user!.id!.toString();

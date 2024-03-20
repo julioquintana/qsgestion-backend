@@ -1,4 +1,4 @@
-export interface UserAdditionalInfo {
+export interface MetadataDto {
     user_id: string;
     key: string;
     value: string;
