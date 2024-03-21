@@ -43,7 +43,7 @@ export async function getUsersByUserIdAndAccountsRepository(supabase: SupabaseCl
         .from('users')
         .select('id, email, user_account(accounts(*),roles(*),metadata(*)))')
         .eq("user_account.account_id", accountId)
-        .eq('user_account.user_id', userId)
+        .eq('id', userId)
     if (error) {
         console.log(error.hint)
         console.log(error.message)
