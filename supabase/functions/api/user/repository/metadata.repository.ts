@@ -24,7 +24,7 @@ export async function createMetadata(supabase: SupabaseClient, metadataDtos: Met
 
     const {data, error} = await supabase
         .from('metadata')
-        .insert(metadataDtos).select()
+        .upsert(metadataDtos).select()
 
     if (error) {
         console.error('Error saving metadata info:', error);

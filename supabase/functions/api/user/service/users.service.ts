@@ -1,6 +1,6 @@
 import SupabaseClient from "https://esm.sh/v135/@supabase/supabase-js@2.39.8/dist/module/SupabaseClient.d.ts";
 import {corsHeaders} from "../../../_shared/index.ts";
-import {createRoles, getAllUserRepository, getUserRecordByEmailRepository, getUsersByUserIdAndAccountsRepository} from "../repository/user.repository.ts";
+import {createRoles, getAllUserRepository, getUserByParameters, getUserRecordByEmailRepository, getUsersByUserIdAndAccountsRepository} from "../repository/user.repository.ts";
 import {getPayloadToken} from "../../../_shared/security/index.ts";
 import {User} from "https://esm.sh/v135/@supabase/gotrue-js@2.62.2/dist/module/lib/types.d.ts";
 import {signUp} from "../../auth/repository/auth.repository.ts";
@@ -34,7 +34,7 @@ async function upsertUser(supabase: SupabaseClient, req: Request) {
         if (userDB) {
             userId = userDB.id;
         } else {
-            const userCreated: User  = await signUp(supabase, requestBody.user.email, requestBody.user.password);
+            const userCreated: User = await signUp(supabase, requestBody.user.email, requestBody.user.password);
             userId = userCreated.id;
         }
 
@@ -84,18 +84,31 @@ function setUserAndAccountIdToMetadata(user_id: string, account_id: number, meta
 
 }
 
-async function userExist(supabase: SupabaseClient, email: string) {
-    const {data, error} = await supabase
-        .from('auth.users')
-        .select()
-        .eq('email', email);
+async function searchUsers(supabase: SupabaseClient, req: Request) {
+    try {
+        const searchParams = Object.fromEntries(new URL(req.url).searchParams);
+        const accountId = getPayloadToken(req).account_id;
 
-    if (error) {
-        console.error('Error checking if user exists:', error);
-        return false;
+        const users = await getUserByParameters(supabase, accountId, searchParams);
+
+        return new Response(JSON.stringify({message: 'UserAccount Created', payload: users}),
+            {
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                status: 200,
+            });
+    } catch
+        (error) {
+        console.error('Error creating account:', error);
+        return new Response(JSON.stringify({status: 'ERROR', message: error}),
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                status: 500,
+            });
     }
-    return data.length > 0;
 }
 
-
-export {userExist, upsertUser, getAllUsers};
+export {upsertUser, getAllUsers, searchUsers};

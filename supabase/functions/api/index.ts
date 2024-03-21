@@ -1,4 +1,4 @@
-import {getAllUsers, upsertUser} from "./user/service/users.service.ts";
+import {getAllUsers, searchUsers, upsertUser} from "./user/service/users.service.ts";
 import {createAccount} from "./account/service/account.services.ts";
 import {corsHeaders, supabase} from "../_shared/index.ts";
 import {loginUser} from "./auth/service/auth.services.ts";
@@ -26,6 +26,7 @@ Deno.serve(async (req: Request) => {
         const isLogout = logoutPattern.test(url);
         const isCreateAccount = createAccountPattern.test(url);
         const isUserRoute = userPattern.test(url);
+        const searchUserPattern = new URLPattern({pathname: '/api/user/search'});
 
         // call relevant method based on method and id
         switch (true) {
@@ -46,6 +47,13 @@ Deno.serve(async (req: Request) => {
                     return authResponse;
                 }
                 return await getAllUsers(supabaseClient, req);
+            }
+            case searchUserPattern.test(url) && method === 'GET': {
+                const authResponse = validateAppAuthorizationMiddleware(req, [])
+                if (authResponse) {
+                    return authResponse;
+                }
+                return await searchUsers(supabaseClient, req);
             }
             case isUserRoute && method === 'POST': {
                 const authResponse = validateAppAuthorizationMiddleware(req, ["owner", "admin"])

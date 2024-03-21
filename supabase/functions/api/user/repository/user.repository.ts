@@ -1,7 +1,6 @@
 import SupabaseClient from "https://esm.sh/v135/@supabase/supabase-js@2.39.8/dist/module/SupabaseClient.d.ts";
 import {AccountResponse, UserResponse} from "../../../_shared/dto/user-response.dto.ts";
 import {RolesDto} from "../../auth/dto/roles.dto.ts";
-import {GetResult} from "https://esm.sh/v135/@supabase/postgrest-js@1.8.6/dist/module/select-query-parser.d.ts";
 import {MetadataDto} from "../dto/metadata.dto.ts";
 
 export async function getUserByEmailRepository(supabase: SupabaseClient, email: string): Promise<UserResponse> {
@@ -26,6 +25,30 @@ export async function getAllUserRepository(supabase: SupabaseClient, accountId: 
         .from('users')
         .select('id, email, user_account(accounts(*),roles(*),metadata(*)))')
         .eq("user_account.account_id", accountId)
+    if (error) {
+        console.log(JSON.stringify(error))
+        throw error
+    }
+    if (!data || data.length === 0) {
+        return [];
+    }
+
+    return buildUserResponseList(data);
+}
+
+export async function getUserByParameters(supabase: SupabaseClient, accountId: string, searchParams: any) {
+    let query = supabase
+        .from('users')
+        .select('id, email, user_account(accounts(*),roles(*),metadata(*)))')
+        .eq("user_account.account_id", accountId)
+
+    for (const param in searchParams) {
+        if (searchParams[param]) {
+            query = query.ilike(param, `%${searchParams[param]}%`);
+        }
+    }
+
+    const {data, error} = await query;
     if (error) {
         console.log(JSON.stringify(error))
         throw error
@@ -87,7 +110,7 @@ export async function createRoles(supabase: SupabaseClient, rolesDto: RolesDto[]
 }
 
 
-function buildUserResponseList(data:any) {
+function buildUserResponseList(data: any) {
     return data.map(user => {
         return {
             id: user.id,
