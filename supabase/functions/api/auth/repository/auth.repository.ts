@@ -14,19 +14,14 @@ export async function signIn(supabase: SupabaseClient, email: string, password: 
                 status: 401,
             });
     }
-    return user
+    return user as AuthTokenResponsePassword;
 }
 
-export  async function signUp(supabase: SupabaseClient, email: string, password: string)  {
-    const response: AuthResponse = await supabase.auth.signUp({email, password});
-    if (response.error) {
-        return new Response(JSON.stringify({status: 'ERROR', message: response.error}),
-            {
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                status: 500,
-            });
+export async function signUp(supabase: SupabaseClient, email: string, password: string)  {
+    try {
+        const response: AuthResponse = await supabase.auth.signUp({email, password});
+        return response.data.user;
+    } catch (error) {
+        throw new Error(error.message);
     }
-    return response.data.user;
 }

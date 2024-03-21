@@ -39,7 +39,6 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
         let accountDto: AccountDto = await getAccountByDni(supabase, account.dni);
 
         if (accountDto != null) {
-            console.log('Account data error:', accountDto.error);
             return new Response(JSON.stringify({
                     status: 'ERROR', message: {
                         name: "AccountApiError",
@@ -58,13 +57,13 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
         const currentDate = new Date(new Date().toISOString());
         const futureDate = new Date(new Date().toISOString());
         futureDate.setDate(currentDate.getDate() + 15);
-        const accountData: AccountDto = {
-            dni: account.dni,
-            name: account.name,
-            address: account.address,
-            status: 'active',
-            active_from: currentDate,
-            active_until: futureDate
+        const accountData = {
+          dni: account.dni,
+          name: account.name,
+          address: account.address,
+          status: 'active',
+          active_from: currentDate,
+          active_until: futureDate
         }
         const userDB = await getUserRecordByEmailRepository(supabase, userDto.email);
 
@@ -80,14 +79,14 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
         }
         accountDto = await createAccountRepository(supabase, accountData);
         console.log('Created account:', JSON.stringify(accountDto))
-        const userAccountDto: UserAccount = {user_id: userDto.id, account_id: accountDto.id};
+        const userAccountDto: UserAccountDto = {user_id: userDto.id, account_id: accountDto.id};
         const userAccount: UserAccountDto = await createUserAccountRepository(supabase, userAccountDto);
         console.log('Created User-Account', JSON.stringify(userAccount));
         const metadata = await createMetadata(supabase, metadataForQSGestion(userDto, accountDto.id));
         console.log('Created Metadata:', JSON.stringify(metadata))
 
         const roles: RolesDto = {user_id: userDto.id, key: "owner", account_id: accountDto.id}
-        const rolesSalved: RolesDto | null = await createRoles(supabase, roles);
+        const rolesSalved: RolesDto | null = await createRoles(supabase, [roles]);
         console.log('Created user roles:', JSON.stringify(rolesSalved))
 
         const tokenInfo: TokenInfoDto = {
@@ -127,63 +126,3 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
             });
     }
 }
-
-
-/*
-const userCreated = response.data!.user!.id!.toString();
-
-
-export async function blockAccount(accountId) {
-    const {data, error} = await supabase
-        .from('accounts')
-        .update({status: 'blocked'})
-        .eq('id', accountId);
-
-    if (error) {
-        console.error('Error blocking account:', error);
-        return null;
-    }
-
-    return data;
-}
-
-export async function getAccounts() {
-    const {data, error} = await supabase
-        .from('accounts')
-        .select('*');
-
-    if (error) {
-        console.error('Error getting accounts:', error);
-        return null;
-    }
-
-    return data;
-}
-
-export async function getAccountById(accountId) {
-    const {data, error} = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('id', accountId);
-
-    if (error) {
-        console.error('Error getting account:', error);
-        return null;
-    }
-
-    return data;
-}
-
-export async function updateAccount(accountId, accountUpdates) {
-    const {data, error} = await supabase
-        .from('accounts')
-        .update(accountUpdates)
-        .eq('id', accountId);
-
-    if (error) {
-        console.error('Error updating account:', error);
-        return null;
-    }
-
-    return data;
-}*/

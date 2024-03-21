@@ -1,40 +1,87 @@
 import SupabaseClient from "https://esm.sh/v135/@supabase/supabase-js@2.39.8/dist/module/SupabaseClient.d.ts";
 import {corsHeaders} from "../../../_shared/index.ts";
-import {getValueToken} from "../../../_shared/security/index.ts";
-import {getAllUserRepository} from "../repository/user.repository.ts";
-import {UserResponse} from "../../../_shared/dto/user-response.dto.ts";
+import {createRoles, getAllUserRepository, getUserRecordByEmailRepository, getUsersByUserIdAndAccountsRepository} from "../repository/user.repository.ts";
+import {getPayloadToken} from "../../../_shared/security/index.ts";
+import {User} from "https://esm.sh/v135/@supabase/gotrue-js@2.62.2/dist/module/lib/types.d.ts";
+import {signUp} from "../../auth/repository/auth.repository.ts";
+import {CreateUserDto} from "../dto/create-user.dto.ts";
+import {UserAccountDto} from "../dto/user-account.dto.ts";
+import {createUserAccountRepository} from "../repository/user-account.repository.ts";
+import {createMetadata} from "../repository/metadata.repository.ts";
+import {MetadataDto} from "../dto/metadata.dto.ts";
+import {RolesDto} from "../../auth/dto/roles.dto.ts";
+
 
 async function getAllUsers(supabase: SupabaseClient, req: Request) {
-    //TODO: We need  search additional info for each user and mapper to structure to response
-    const authHeader = req.headers.get('app-authorization');
-    const tokenParts = authHeader!.split(' ');
-    const accountId = (getValueToken(tokenParts[1])).account_id
+    const accountId = getPayloadToken(req).account_id;
     await supabase.auth.getUser()
 
-    const response: UserResponse[] = await getAllUserRepository(supabase, accountId);
-
-    return new Response(JSON.stringify(response), {
+    return new Response(JSON.stringify(await getAllUserRepository(supabase, accountId)), {
         headers: {...corsHeaders, 'Content-Type': 'application/json'},
         status: 200,
     })
 }
 
 
-async function updateUserInfo(supabase: SupabaseClient, user_id: string, company: string, roles: string, token: string) {
+async function upsertUser(supabase: SupabaseClient, req: Request) {
+    try {
+        const requestBody: CreateUserDto = await req.json();
 
-    await supabase.auth.getUser()
+        const accountId = getPayloadToken(req).account_id;
 
+        const userDB = await getUserRecordByEmailRepository(supabase, requestBody.user.email);
+        let userId = "";
+        if (userDB) {
+            userId = userDB.id;
+        } else {
+            const userCreated: User  = await signUp(supabase, requestBody.user.email, requestBody.user.password);
+            userId = userCreated.id;
+        }
 
-    const {data, error} = await supabase
-        .from('user_additional_info')
-        .update({company: company, roles: roles})
-        .eq('user_id', user_id);
+        const userAccountDto: UserAccountDto = {user_id: userId, account_id: accountId};
+        const userAccount: UserAccountDto = await createUserAccountRepository(supabase, userAccountDto);
+        console.log('Created User-Account', JSON.stringify(userAccount));
 
-    if (error) {
-        console.error('Error updating user info:', error);
-    } else {
-        console.log('User info updated:', data);
+        const metadata = await createMetadata(supabase, setUserAndAccountIdToMetadata(userId, accountId, requestBody.metadata));
+        console.log('Created Metadata:', JSON.stringify(metadata))
+
+        const rolesSalved: RolesDto | null = await createRoles(supabase, buildRolesDto(requestBody.roles, userId, accountId));
+        console.log('Created user roles:', JSON.stringify(rolesSalved))
+
+        const userCreated = await getUsersByUserIdAndAccountsRepository(supabase, [accountId], userId);
+        return new Response(JSON.stringify({message: 'UserAccount Created', payload: userCreated[0]}),
+            {
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                status: 200,
+            });
+    } catch
+        (error) {
+        console.error('Error creating account:', error);
+        return new Response(JSON.stringify({status: 'ERROR', message: error}),
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                status: 500,
+            });
     }
+}
+
+function buildRolesDto(roles: string[], user_id: string, account_id: number) {
+    return roles.map((role) => {
+        return {user_id: user_id, account_id: account_id, key: role} as RolesDto;
+    });
+}
+
+function setUserAndAccountIdToMetadata(user_id: string, account_id: number, metadata: MetadataDto[]) {
+    metadata.forEach((m) => {
+        m.user_id = user_id;
+        m.account_id = account_id;
+    });
+    return metadata;
+
 }
 
 async function userExist(supabase: SupabaseClient, email: string) {
@@ -51,4 +98,4 @@ async function userExist(supabase: SupabaseClient, email: string) {
 }
 
 
-export {userExist, updateUserInfo, getAllUsers};
+export {userExist, upsertUser, getAllUsers};

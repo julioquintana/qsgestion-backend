@@ -1,9 +1,9 @@
-import {getAllUsers} from "./user/service/users.service.ts";
+import {getAllUsers, upsertUser} from "./user/service/users.service.ts";
 import {createAccount} from "./account/service/account.services.ts";
 import {corsHeaders, supabase} from "../_shared/index.ts";
 import {loginUser} from "./auth/service/auth.services.ts";
 import {UserDto} from "../_shared/dto/user.dto.ts";
-import { validateAppAuthorization } from "../_shared/security/index.ts";
+import {validateAppAuthorizationMiddleware} from "../_shared/security/index.ts";
 
 
 Deno.serve(async (req: Request) => {
@@ -19,13 +19,13 @@ Deno.serve(async (req: Request) => {
         const loginPattern = new URLPattern({pathname: '/api/auth/login'});
         const logoutPattern = new URLPattern({pathname: '/api/auth/logout'});
         const createAccountPattern = new URLPattern({pathname: '/api/account'});
-        const allUserPattern = new URLPattern({pathname: '/api/user'});
+        const userPattern = new URLPattern({pathname: '/api/user'});
 
         // Check if the request URL matches any of the patterns
         const isLogin = loginPattern.test(url);
         const isLogout = logoutPattern.test(url);
         const isCreateAccount = createAccountPattern.test(url);
-        const isAllUser = allUserPattern.test(url);
+        const isUserRoute = userPattern.test(url);
 
         // call relevant method based on method and id
         switch (true) {
@@ -40,12 +40,19 @@ Deno.serve(async (req: Request) => {
             case isCreateAccount && method === 'POST': {
                 return createAccount(supabaseClient, req)
             }
-            case isAllUser && method === 'GET': {
-                const authResponse = validateAppAuthorization(req);
+            case isUserRoute && method === 'GET': {
+                const authResponse = validateAppAuthorizationMiddleware(req, ["owner", "admin"])
                 if (authResponse) {
                     return authResponse;
                 }
                 return await getAllUsers(supabaseClient, req);
+            }
+            case isUserRoute && method === 'POST': {
+                const authResponse = validateAppAuthorizationMiddleware(req, ["owner", "admin"])
+                if (authResponse) {
+                    return authResponse;
+                }
+                return await upsertUser(supabaseClient, req);
             }
         }
         throw new Error("Invalid Request ")

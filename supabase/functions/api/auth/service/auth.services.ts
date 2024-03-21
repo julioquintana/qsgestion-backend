@@ -10,20 +10,19 @@ import { signIn } from "../repository/auth.repository.ts";
 export async function loginUser(supabase: SupabaseClient, email: string, password: string) {
   try {
     console.log('login to email:', email)
-    const user: AuthTokenResponsePassword = await signIn(supabase, email, password);
+    const user: AuthTokenResponsePassword|any = await signIn(supabase, email, password);
     
     const {data} = await supabase
     .from('user_account')
     .select()
-    .eq('user_id', user.data.user!.id);
+    .eq('user_id', user.data!.user!.id);
 
-    const distinctAccountIds: number[] = [...new Set(data.map(item => item.account_id))];
+    const distinctAccountIds: number[] = [...new Set(data!.map(item => item.account_id))];
 
     const usersFound = await getUsersByUserIdAndAccountsRepository(supabase, distinctAccountIds, user.data.user!.id)
 
     for (let index = 0; index < usersFound[0].accounts.length; index++) {
       const account = usersFound[0].accounts[index];
-      console.log('Account found:', account)
 
       const tokenInfo: TokenInfoDto = {
         user_id: user.data.user!.id,
