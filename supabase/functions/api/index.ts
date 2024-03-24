@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
                 return createAccount(supabaseClient, req)
             }
             case isUserRoute && method === 'GET': {
-                const authResponse = validateAppAuthorizationMiddleware(req, ["owner", "admin"])
+                const authResponse = validateAppAuthorizationMiddleware(req, ["OWNER", "ADMIN"])
                 if (authResponse) {
                     return authResponse;
                 }
@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
                 return await searchUsers(supabaseClient, req);
             }
             case isUserRoute && method === 'POST': {
-                const authResponse = validateAppAuthorizationMiddleware(req, ["owner", "admin"])
+                const authResponse = validateAppAuthorizationMiddleware(req, ["OWNER", "ADMIN"])
                 if (authResponse) {
                     return authResponse;
                 }

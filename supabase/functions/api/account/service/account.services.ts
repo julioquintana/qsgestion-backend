@@ -13,17 +13,12 @@ import {createMetadata} from "../../user/repository/metadata.repository.ts";
 import {User} from "https://esm.sh/v135/@supabase/gotrue-js@2.62.2/dist/module/lib/types.d.ts";
 import {UserAccountDto} from "../../user/dto/user-account.dto.ts";
 import {AccountResponse, UserResponse} from "../../../_shared/dto/user-response.dto.ts";
+import {createUserInfoRepository} from "../../user/repository/user-info.repository.ts";
+import {UserInfoDto} from "../../user/dto/user-info.dto.ts";
 
 const metadataForQSGestion = (user: UserDto, accountId: number) => {
     return [
-        {user_id: user.id, key: "NAME", value: user.name, account_id: accountId},
-        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
-        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
-        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
-        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
-        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
-        {user_id: user.id, key: "name", value: user.name, account_id: accountId},
-        {user_id: user.id, key: "name", value: user.name, account_id: accountId}
+        {user_id: user.id, key: "NAME", value: user.name, account_id: accountId}
     ] as MetadataDto[]
 };
 
@@ -82,12 +77,15 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
         const userAccountDto: UserAccountDto = {user_id: userDto.id, account_id: accountDto.id};
         const userAccount: UserAccountDto = await createUserAccountRepository(supabase, userAccountDto);
         console.log('Created User-Account', JSON.stringify(userAccount));
-        const metadata = await createMetadata(supabase, metadataForQSGestion(userDto, accountDto.id));
-        console.log('Created Metadata:', JSON.stringify(metadata))
 
-        const roles: RolesDto = {user_id: userDto.id, key: "owner", account_id: accountDto.id}
+        const roles: RolesDto = {user_id: userDto.id, key: "OWNER", account_id: accountDto.id}
         const rolesSalved: RolesDto | null = await createRoles(supabase, [roles]);
         console.log('Created user roles:', JSON.stringify(rolesSalved))
+        
+        const userInfo: UserInfoDto = {user_id: userDto.id, dni: userDto.dni, name: userDto.name};
+        const userInfoSalved: UserInfoDto | null = await createUserInfoRepository(supabase, userInfo);
+        console.log('Created user info:', JSON.stringify(userInfoSalved))
+        
 
         const tokenInfo: TokenInfoDto = {
             user_id: userDto.id,
@@ -99,7 +97,6 @@ export async function createAccount(supabase: SupabaseClient, request: Request):
         const token = buildToken(tokenInfo)
         const accountResponse: AccountResponse = accountDto as AccountResponse;
         accountResponse.roles = [rolesSalved.key];
-        accountResponse.metadata = metadata;
         accountResponse.token = token;
         const userCreated: UserResponse = {
             email: userDto.email,

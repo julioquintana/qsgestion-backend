@@ -23,7 +23,7 @@ export async function getUserByEmailRepository(supabase: SupabaseClient, email: 
 export async function getAllUserRepository(supabase: SupabaseClient, accountId: string) {
     const {data, error} = await supabase
         .from('users')
-        .select('id, email, user_account(accounts(*),roles(*),metadata(*)))')
+        .select('id, email, user_info(*), user_account(accounts(*),roles(*),metadata(*)))')
         .eq("user_account.account_id", accountId)
     if (error) {
         console.log(JSON.stringify(error))
@@ -39,7 +39,7 @@ export async function getAllUserRepository(supabase: SupabaseClient, accountId: 
 export async function getUserByParameters(supabase: SupabaseClient, accountId: string, searchParams: any) {
     let query = supabase
         .from('users')
-        .select('id, email, user_account(accounts(*),roles(*),metadata(*)))')
+        .select('id, email, user_info(*), user_account(accounts(*),roles(*),metadata(*)))')
         .eq("user_account.account_id", accountId)
 
     for (const param in searchParams) {
@@ -49,6 +49,7 @@ export async function getUserByParameters(supabase: SupabaseClient, accountId: s
     }
 
     const {data, error} = await query;
+        console.log(JSON.stringify(data))
     if (error) {
         console.log(JSON.stringify(error))
         throw error
@@ -64,7 +65,7 @@ export async function getUserByParameters(supabase: SupabaseClient, accountId: s
 export async function getUsersByUserIdAndAccountsRepository(supabase: SupabaseClient, accountId: number[], userId: string) {
     const {data, error} = await supabase
         .from('users')
-        .select('id, email, user_account(accounts(*),roles(*),metadata(*)))')
+        .select('id, email, user_info(*), user_account(accounts(*),roles(*),metadata(*)))')
         .eq("user_account.account_id", accountId)
         .eq('id', userId)
     if (error) {
@@ -109,11 +110,23 @@ export async function createRoles(supabase: SupabaseClient, rolesDto: RolesDto[]
     return data[0] as RolesDto;
 }
 
+export async function deleteAllRolesByUserIdAndAccount(supabase: SupabaseClient, userId: string, accountId: string) {
+    const {error} = await supabase
+        .from('roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('account_id', accountId)
 
+    if (error) {
+        console.error('Error deleting roles info:', error);
+    }
+}
 function buildUserResponseList(data: any) {
     return data.map(user => {
         return {
             id: user.id,
+            dni: user.user_info[0].dni,
+            name: user.user_info[0].name,
             email: user.email,
             accounts: user.user_account.map(accountData => {
                 const roles: string[] = accountData.roles.map(role => role.key);

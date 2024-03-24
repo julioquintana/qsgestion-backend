@@ -11,7 +11,6 @@ export async function loginUser(supabase: SupabaseClient, email: string, passwor
   try {
     console.log('login to email:', email)
     const user: AuthTokenResponsePassword|any = await signIn(supabase, email, password);
-    
     const {data} = await supabase
     .from('user_account')
     .select()

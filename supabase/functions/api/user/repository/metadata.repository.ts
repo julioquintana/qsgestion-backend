@@ -31,3 +31,15 @@ export async function createMetadata(supabase: SupabaseClient, metadataDtos: Met
     } 
     return data;
 }
+
+export async function deleteAllMetadataByUserIdAndAccount(supabase: SupabaseClient, userId: string, accountId: string) {
+    const {error} = await supabase
+        .from('metadata')
+        .delete()
+        .eq('user_id', userId)
+        .eq('account_id', accountId)
+
+    if (error) {
+        console.error('Error deleting metadata info:', error);
+    } 
+}

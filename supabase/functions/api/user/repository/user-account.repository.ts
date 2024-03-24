@@ -26,7 +26,7 @@ export async function createUserAccountRepository(supabase: SupabaseClient, user
 
     const {data, error} = await supabase
         .from('user_account')
-        .insert(userAccountDto)
+        .upsert(userAccountDto)
         .select();
 
     if (error) {

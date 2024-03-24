@@ -3,7 +3,10 @@ import {AuthResponse, AuthTokenResponsePassword} from "https://esm.sh/v135/@supa
 import { SignUpUserDto } from "../dto/signup-user.dto.ts";
 
 export async function signIn(supabase: SupabaseClient, email: string, password: string): Promise<AuthTokenResponsePassword | Response> {
+    console.log('Signing in user:', email, password)
     const user: AuthTokenResponsePassword = await supabase.auth.signInWithPassword({email, password});
+    console.log('User:', user);
+
     if (user.error) {
         console.error('Error signing user:', email);
         return new Response(JSON.stringify({status: 'ERROsR', message: user.error.message,}),

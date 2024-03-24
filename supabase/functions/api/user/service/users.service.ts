@@ -1,15 +1,25 @@
 import SupabaseClient from "https://esm.sh/v135/@supabase/supabase-js@2.39.8/dist/module/SupabaseClient.d.ts";
 import {corsHeaders} from "../../../_shared/index.ts";
-import {createRoles, getAllUserRepository, getUserByParameters, getUserRecordByEmailRepository, getUsersByUserIdAndAccountsRepository} from "../repository/user.repository.ts";
+import {
+    createRoles,
+    deleteAllRolesByUserIdAndAccount,
+    getAllUserRepository,
+    getUserByParameters,
+    getUserRecordByEmailRepository,
+    getUsersByUserIdAndAccountsRepository
+} from "../repository/user.repository.ts";
 import {getPayloadToken} from "../../../_shared/security/index.ts";
 import {User} from "https://esm.sh/v135/@supabase/gotrue-js@2.62.2/dist/module/lib/types.d.ts";
 import {signUp} from "../../auth/repository/auth.repository.ts";
 import {CreateUserDto} from "../dto/create-user.dto.ts";
 import {UserAccountDto} from "../dto/user-account.dto.ts";
 import {createUserAccountRepository} from "../repository/user-account.repository.ts";
-import {createMetadata} from "../repository/metadata.repository.ts";
+import {createMetadata, deleteAllMetadataByUserIdAndAccount} from "../repository/metadata.repository.ts";
 import {MetadataDto} from "../dto/metadata.dto.ts";
 import {RolesDto} from "../../auth/dto/roles.dto.ts";
+import {UserInfoDto} from "../dto/user-info.dto.ts";
+import {createUserInfoRepository, deleteAllUserInfoByUserId} from "../repository/user-info.repository.ts";
+import {UserDto} from "../../../_shared/dto/user.dto.ts";
 
 
 async function getAllUsers(supabase: SupabaseClient, req: Request) {
@@ -26,6 +36,7 @@ async function getAllUsers(supabase: SupabaseClient, req: Request) {
 async function upsertUser(supabase: SupabaseClient, req: Request) {
     try {
         const requestBody: CreateUserDto = await req.json();
+        const userDto: UserDto = requestBody.user;
 
         const accountId = getPayloadToken(req).account_id;
 
@@ -42,14 +53,21 @@ async function upsertUser(supabase: SupabaseClient, req: Request) {
         const userAccount: UserAccountDto = await createUserAccountRepository(supabase, userAccountDto);
         console.log('Created User-Account', JSON.stringify(userAccount));
 
+
+        await deleteAllMetadataByUserIdAndAccount(supabase, userId, accountId);
         const metadata = await createMetadata(supabase, setUserAndAccountIdToMetadata(userId, accountId, requestBody.metadata));
         console.log('Created Metadata:', JSON.stringify(metadata))
 
+        await deleteAllRolesByUserIdAndAccount(supabase, userId, accountId);
         const rolesSalved: RolesDto | null = await createRoles(supabase, buildRolesDto(requestBody.roles, userId, accountId));
         console.log('Created user roles:', JSON.stringify(rolesSalved))
 
+        await deleteAllUserInfoByUserId(supabase, userId);
+        const userInfo: UserInfoDto = {user_id: userId, dni: userDto.dni, name: userDto.name};
+        await createUserInfoRepository(supabase, userInfo);
+
         const userCreated = await getUsersByUserIdAndAccountsRepository(supabase, [accountId], userId);
-        return new Response(JSON.stringify({message: 'UserAccount Created', payload: userCreated[0]}),
+        return new Response(JSON.stringify({message: 'User Created or Updated', payload: userCreated[0]}),
             {
                 headers: {
                     "Content-Type": "application/json"
@@ -91,7 +109,7 @@ async function searchUsers(supabase: SupabaseClient, req: Request) {
 
         const users = await getUserByParameters(supabase, accountId, searchParams);
 
-        return new Response(JSON.stringify({message: 'UserAccount Created', payload: users}),
+        return new Response(JSON.stringify({message: 'User Found', payload: users}),
             {
                 headers: {
                     "Content-Type": "application/json"
